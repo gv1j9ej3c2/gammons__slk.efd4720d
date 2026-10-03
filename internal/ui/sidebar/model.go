@@ -1740,7 +1740,7 @@ func (m *Model) buildCache(width int) {
 		// style below distinguishes muted-with-unreads from a fully
 		// read row visually. Predicate lives on ChannelItem so the
 		// App's tab-title counter and section aggregates agree.
-		hasUnread := item.IsVisiblyUnread(readState[item.Name])
+		hasUnread := item.IsVisiblyUnread(readState[item.ID])
 
 		// Trailing indicator: a mention badge when the channel has
 		// unread direct mentions, otherwise the unread dot, otherwise
@@ -1782,9 +1782,9 @@ func (m *Model) buildCache(width int) {
 			case item.Status.InDND(statusNow):
 				prefix = dmDNDPrefix
 			case item.Presence == "active":
-				prefix = dmAwayPrefix
-			default:
 				prefix = dmActivePrefix
+			default:
+				prefix = dmAwayPrefix
 			}
 		case "group_dm":
 			prefix = groupDMPrefix
@@ -1819,7 +1819,7 @@ func (m *Model) buildCache(width int) {
 		// computed per row above. Charging every row the badge's width
 		// would truncate names on rows that have no badge, so this
 		// stays inside the loop.
-		const rowChromeExcludingTrailer = 4 // cursor(2) + prefix(3) + space(1)
+		const rowChromeExcludingTrailer = 6 // cursor(2) + prefix(3) + space(1)
 		name := item.Name
 		// A DM peer's status emoji follows the name after a space. It is
 		// charged to the name's budget so a long name truncates instead
@@ -1934,7 +1934,7 @@ func (m *Model) buildCache(width int) {
 	// Flatten into a single row list with section headers.
 	// Add a blank line between sections for visual separation.
 	for i, name := range sectionOrder {
-		if i >= 0 {
+		if i > 0 {
 			m.cacheRows = append(m.cacheRows, renderRow{height: 1, navIdx: -1})
 		}
 		group := sectionMap[name]
