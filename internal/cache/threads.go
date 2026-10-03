@@ -46,7 +46,7 @@ SELECT
               WHERE channel_id = s.channel_id AND ts = s.thread_ts AND is_deleted = 0), ''),
     (SELECT COUNT(*) FROM messages
      WHERE channel_id = s.channel_id AND thread_ts = s.thread_ts
-       AND is_deleted = 0)
+       AND ts != s.thread_ts AND is_deleted = 0)
         AS reply_count,
     COALESCE(
         (SELECT MAX(ts) FROM messages
@@ -56,7 +56,7 @@ SELECT
     COALESCE(
         (SELECT user_id FROM messages
          WHERE channel_id = s.channel_id AND thread_ts = s.thread_ts AND is_deleted = 0
-         ORDER BY ts ASC LIMIT 1),
+         ORDER BY ts DESC LIMIT 1),
         ''
     ) AS last_reply_by
 FROM thread_subscriptions s
@@ -105,8 +105,14 @@ WHERE s.workspace_id = ? AND s.active = 1
 		s.LastReplyTS = effLatest
 
 		// Unread when the newest activity is past our read watermark.
+		// Suppress only when that newest activity is a locally-cached
+		// reply we know was authored by self (the optimistic just-sent
+		// window, before last_read catches up). When the newest activity
+		// comes from the authoritative latest_reply (author unknown /
+		// uncached), we trust the ts comparison — this is the boot case
+		// the old cached-reply-only heuristic got wrong.
 		unread := effLatest > lastRead
-		if unread && s.LastReplyBy == selfUserID {
+		if unread && cachedMaxTS == effLatest && s.LastReplyBy == selfUserID {
 			unread = false
 		}
 		s.Unread = unread
@@ -117,7 +123,7 @@ WHERE s.workspace_id = ? AND s.active = 1
 	}
 
 	sort.SliceStable(out, func(i, j int) bool {
-		return out[i].LastReplyTS < out[j].LastReplyTS
+		return out[i].LastReplyTS > out[j].LastReplyTS
 	})
 	return out, nil
 }
